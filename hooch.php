@@ -184,26 +184,4 @@ class App
 
 }
 
-function object_to_array($var) {
-    $result = array();
-    $references = array();
-
-    // loop over elements/properties
-    foreach ($var as $key => $value) {
-        // recursively convert objects
-        if (is_object($value) || is_array($value)) {
-            // but prevent cycles
-            if (!in_array($value, $references)) {
-                $result[$key] = object_to_array($value);
-                $references[] = $value;
-            }
-        } else {
-            // simple values are untouched
-            $result[$key] = $value;
-        }
-    }
-    return $result;
-}
-
-
 ?>
