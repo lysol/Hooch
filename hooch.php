@@ -35,17 +35,13 @@ class Preprocessor
 
 class App
 {
+    private $namedRoutes = array();
     private $gets = array();
     private $posts = array();
     private $preprocessors = array();
     public $notFoundBody = '';
     public $errorBody = '';
     public $basePath = '';
-
-    public function __construct($strictPaths=false)
-    {
-        $this->strictPaths = $strictPaths;
-    }
 
     public function notFound()
     {
@@ -145,14 +141,18 @@ class App
         $this->notFound();
     }
 
-    public function get($pattern, $callback)
+    public function get($pattern, $callback, $name=null)
     {
         $this->gets[$pattern] = $callback;
+        if ($name != null)
+            $this->namedPatterns[$name] = $pattern;
     }
 
-    public function post($pattern, $callback)
+    public function post($pattern, $callback, $name=null)
     {
         $this->posts[$pattern] = $callback;
+        if ($name != null)
+            $this->namedPatterns[$name] = $pattern;
     }
 
     public function preprocess($preprocessor)
@@ -182,6 +182,36 @@ class App
         ));
     }
 
+    public function urlFor($name, $args=array()) {
+        if (!isset($this->namedPatterns[$name]))
+            throw new Exception("No pattern named $name");
+        $pattern = $this->namedPatterns[$name];
+        foreach($args as $key => $val) {
+            if (strstr($pattern, ':' . $key) === false)
+                throw new Exception("No pattern argument named $name.");
+            $pattern = str_replace(':' . $key, $val, $pattern);
+        }
+        if (strstr($pattern, ':') === ':')
+            throw new Exception("Incorrect number or named arguments supplied.");
+
+        return $pattern;
+    }
+
+    public function getPost() {
+        function stripArray($array) {
+            $out = array();
+            foreach($array as $key => $value) {
+                if (is_array($value))
+                    $out[$key] = stripArray($value);
+                else if (is_string($value))
+                    $out[$key] = stripslashes($value);
+                else
+                    $out[$key] = $value;
+            }
+            return $out;
+        }
+        return stripArray($_POST);
+    }
 }
 
 ?>
