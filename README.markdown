@@ -35,6 +35,7 @@ Usage:
 
     // These are things we will use in every template, more or less.
     $twig->addGlobal('basePath', $basePath);
+    $twig->addGlobal('app', $app);
 
     // Use a Preprocessor to implement authentication, etc.
     // This is a bad example, but you get it. You're smart.
@@ -88,6 +89,22 @@ Usage:
                 );
         });
     });
+
+    // Need to dynamically reference URLs, like Flask?
+
+    $app->get('/anotherpath/:user_id', function ($args) use ($app) {
+        return 'test';
+    }, 'named_path');
+
+    /*
+        In your template (if using Twig), you can reference it via the urlFor method:
+
+        {{ app.urlFor('named_path', {'user_id': 1}) }}
+    */
+
+    // Or, in PHP:
+
+    print $app->urlFor('named_path', array('user_id' => 1));
 
 
     // And the thing that makes it all happen:
