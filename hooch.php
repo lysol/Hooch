@@ -33,6 +33,27 @@ class Preprocessor
     }
 }
 
+
+class Flash
+{
+    public $message;
+    public $type;
+
+    public function __construct($type, $message)
+    {
+        $this->type = $type;
+        $this->message = $message;
+    }
+
+    public function render($htmlFormat=null)
+    {
+        if ($htmlFormat == null)
+            $htmlFormat = "<div class=\"flash flash-$this->type\">%s</div>";
+        return sprintf($htmlFormat, $this->message);
+    }
+}
+
+
 class Route
 {
     public $routeType;
@@ -71,7 +92,7 @@ class Route
         if ($_SERVER['REQUEST_METHOD'] != $this->routeType)
             return false;
         $targetPattern = $this->buildRoutePattern($this->pattern);
-        
+
         if (preg_match($targetPattern, $url, $matches))
         {
             $argnames = array_filter(array_keys($matches), 'is_string');
@@ -179,10 +200,16 @@ class App
         }
     }
 
-    public function seeother($path)
+    public function seeother($namePath, $args=array())
     {
-        $newpath = str_replace('//', '/', $this->basePath . $path);
-        header('Location: ' . $newpath);
+        try {
+            $url = $this->urlFor($namePath, $args);
+        } catch (Exception $err) {
+            $url = $namePath;
+            $url = str_replace('//', '/', $this->basePath . $url);
+        }
+
+        header('Location: ' . $url);
     }
 
     public function serve($url=null)
@@ -258,34 +285,39 @@ class App
     }
 
     public function urlFor($name, $args=array()) {
-        if (!isset($this->namedPatterns[$name]))
-            throw new Exception("No pattern named $name");
-        $pattern = $this->namedPatterns[$name];
-        foreach($args as $key => $val) {
-            if (strstr($pattern, ':' . $key) === false)
-                throw new Exception("No pattern argument named $name.");
-            $pattern = str_replace(':' . $key, $val, $pattern);
-        }
-        if (strstr($pattern, ':') === ':')
-            throw new Exception("Incorrect number or named arguments supplied.");
+        foreach($this->routes as $route) {
+            if ($route->name === $name) {
+                $pattern = $route->pattern;
+                foreach($args as $key => $val) {
+                    if (strstr($pattern, ':' . $key) === false)
+                        throw new Exception("No pattern argument named $name.");
+                    $pattern = str_replace(':' . $key, $val, $pattern);
+                }
+                if (strstr($pattern, ':') === ':')
+                    throw new Exception("Incorrect number or named arguments supplied.");
 
-        return $pattern;
+                return str_replace('//', '/', $this->basePath . $pattern);
+            }
+        }
+
+        throw new Exception("No route named $name.");
+
     }
 
     public function getPost() {
-        function stripArray($array) {
+        $stripArray = function ($array) {
             $out = array();
             foreach($array as $key => $value) {
                 if (is_array($value))
-                    $out[$key] = stripArray($value);
+                    $out[$key] = $stripArray($value);
                 else if (is_string($value))
                     $out[$key] = stripslashes($value);
                 else
                     $out[$key] = $value;
             }
             return $out;
-        }
-        return stripArray($_POST);
+        };
+        return $stripArray($_POST);
     }
 }
 
