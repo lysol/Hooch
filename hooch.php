@@ -168,8 +168,8 @@ class App
     public $basePath = '';
     private $strictPaths = false;
     public $twig;
-    private $error_page = null;
-    private $error_args = array();
+    public $error_page = null;
+    public $error_args = array();
     private $_flash;
 
 
@@ -295,19 +295,16 @@ class App
 
     private function wrapCallback($callable)
     {
-        if ($this->error_page == null)
-            return $callable;
-
-        $error_page = $this->error_page;
-        $error_args = $this->error_args;
         $app = $this;
         return function($args) use ($callable, $app, $error_page, $error_args) {
             try {
                 $result = $callable($args);
                 return $result;
             } catch (\Exception $err) {
+                if ($app->error_page == null)
+                    throw $err;
                 $app->flash($err->getMessage(), 'error');
-                $app->render($error_page, $error_args);
+                return $app->render($app->error_page, $app->error_args);
             }
         };
     }
