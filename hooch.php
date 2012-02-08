@@ -2,32 +2,34 @@
 
 namespace Hooch;
 
+require 'Twig/Autoloader.php';
+
 class Preprocessor
 {
     public function __construct()
     {
     }
 
-    public function fail()
+    public function fail($app, $path)
     {
 
     }
 
-    public function success()
+    public function success($app, $path)
     {
 
     }
 
-    public function process($path)
+    public function process($app, $path)
     {
-        if (!($this->test($path))) {
-            $this->fail($path);
+        if (!($this->test($app, $path))) {
+            $this->fail($app, $path);
         } else {
-            $this->success($path);
+            $this->success($app, $path);
         }
     }
 
-    public function test($path)
+    public function test($app, $path)
     {
 
     }
@@ -165,12 +167,52 @@ class App
     public $errorBody = '';
     public $basePath = '';
     private $strictPaths = false;
-    
-    public function strict()
+    public $twig;
+    private $error_page = null;
+    private $error_args = array();
+    private $_flash;
+
+
+    public function __construct($basePath='/', $twig=null, $loader=null)
     {
+        \Twig_Autoloader::register();
+        if ($loader == null)
+            $loader = new \Twig_Loader_Filesystem('templates');
+        if ($twig == null)
+            $this->twig = new \Twig_Environment(
+                $loader, 
+                array('debug' => true, 'strict_variables' => true, 'autoescape' => false)
+            );
+        else
+            $this->twig = $twig;
+
+        // stick pre-stripslash'd data in there
+        $this->twig->addGlobal('form', $this->getPost());
+        $this->twig->addGlobal('app', $this);
+        $this->twig->addGlobal('flash', null);
+        session_start();
+        $this->twig->addGlobal('session', $_SESSION);
         $this->strictPaths = true;
+        $this->basePath = $basePath;
     }
 
+    public function flash($message, $class='info')
+    {
+        $flash = new Flash($class, $message);
+        $this->addGlobal('flash', $flash);
+    }
+
+    public function render($template_name, $vars=array())
+    {
+        // pass it to the twig context
+        $template = $this->twig->loadTemplate($template_name);
+        return $template->render($vars);
+    }
+
+    public function addGlobal($key, $val)
+    {
+        return $this->twig->addGlobal($key, $val);
+    }
 
     public function notFound()
     {
@@ -204,12 +246,13 @@ class App
     {
         try {
             $url = $this->urlFor($namePath, $args);
-        } catch (Exception $err) {
+        } catch (\Exception $err) {
             $url = $namePath;
             $url = str_replace('//', '/', $this->basePath . $url);
         }
 
         header('Location: ' . $url);
+        exit();
     }
 
     public function serve($url=null)
@@ -227,7 +270,7 @@ class App
 
         foreach($this->preprocessors as $preprocessor) {
             $parsed = parse_url($_SERVER['REQUEST_URI']);
-            $preprocessor->process($parsed['path']);
+            $preprocessor->process($this, $url);
         }
 
         foreach($this->subApps as $subApp) {
@@ -242,14 +285,41 @@ class App
         $this->notFound();
     }
 
+    public function tGet($pattern, $template_name, $name=null)
+    {
+        $app = $this;
+        $this->routes[] = new Get($this, $pattern, function($args) use ($app, $template_name) {
+            return $app->render($template_name, $args);
+        }, $name);
+    }
+
+    private function wrapCallback($callable)
+    {
+        if ($this->error_page == null)
+            return $callable;
+
+        $error_page = $this->error_page;
+        $error_args = $this->error_args;
+        $app = $this;
+        return function($args) use ($callable, $app, $error_page, $error_args) {
+            try {
+                $result = $callable($args);
+                return $result;
+            } catch (\Exception $err) {
+                $app->flash($err->getMessage(), 'error');
+                $app->render($error_page, $error_args);
+            }
+        };
+    }
+
     public function get($pattern, $callback, $name=null)
     {
-        $this->routes[] = new Get($this, $pattern, $callback, $name);
+        $this->routes[] = new Get($this, $pattern, $this->wrapCallback($callback), $name);
     }
 
     public function post($pattern, $callback, $name=null)
     {
-        $this->routes[] = new Post($this, $pattern, $callback, $name);
+        $this->routes[] = new Post($this, $pattern, $this->wrapCallback($callback), $name);
     }
 
     public function subApp($pattern, $app)
@@ -262,6 +332,11 @@ class App
         array_push($this->preprocessors, $preprocessor);
     }
 
+    public function trapErrors($redirect_name, $args=array()) {
+        $this->error_page = $redirect_name;
+        $this->error_args = $args;
+    }
+
     public function apiSimple($callable) {
         // Take an anonymous function, execute the contents, and respond with the following structure:
         // array(
@@ -271,7 +346,7 @@ class App
         $message = '';
         try {
             $result = $callable();
-        } catch (Exception $err) {
+        } catch (\Exception $err) {
             $message = $err->getMessage();
         }
         header('Content-type: application/json');
@@ -285,22 +360,24 @@ class App
     }
 
     public function urlFor($name, $args=array()) {
+        if (!is_array($args))
+            throw new Exception('Arguments must be an array.');
         foreach($this->routes as $route) {
             if ($route->name === $name) {
                 $pattern = $route->pattern;
                 foreach($args as $key => $val) {
                     if (strstr($pattern, ':' . $key) === false)
-                        throw new Exception("No pattern argument named $name.");
+                        throw new \Exception("No pattern argument named $name.");
                     $pattern = str_replace(':' . $key, $val, $pattern);
                 }
                 if (strstr($pattern, ':') === ':')
-                    throw new Exception("Incorrect number or named arguments supplied.");
+                    throw new \Exception("Incorrect number or named arguments supplied.");
 
                 return str_replace('//', '/', $this->basePath . $pattern);
             }
         }
 
-        throw new Exception("No route named $name.");
+        throw new \Exception("No route named $name.");
 
     }
 
