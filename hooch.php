@@ -296,7 +296,7 @@ class App
     private function wrapCallback($callable)
     {
         $app = $this;
-        return function($args) use ($callable, $app, $error_page, $error_args) {
+        return function($args) use ($callable, $app) {
             try {
                 $result = $callable($args);
                 return $result;
@@ -378,20 +378,19 @@ class App
 
     }
 
-    public function getPost() {
-        $stripArray = function ($array) {
-            $out = array();
-            foreach($array as $key => $value) {
-                if (is_array($value))
-                    $out[$key] = $stripArray($value);
-                else if (is_string($value))
-                    $out[$key] = stripslashes($value);
-                else
-                    $out[$key] = $value;
-            }
-            return $out;
-        };
-        return $stripArray($_POST);
+    public function getPost($array=null) {
+        if ($array == null)
+            $array = $_POST;
+        $out = array();
+        foreach($array as $key => $value) {
+            if (is_array($value))
+                $out[$key] = $this->getPost($value);
+            else if (is_string($value))
+                $out[$key] = stripslashes($value);
+            else
+                $out[$key] = $value;
+        }
+        return $out;
     }
 }
 
