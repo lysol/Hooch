@@ -166,7 +166,7 @@ class App
     public $notFoundBody = '';
     public $errorBody = '';
     public $basePath = '';
-    private $strictPaths = false;
+    private $strictPaths = true;
     public $twig;
     public $error_page = null;
     public $error_args = array();
@@ -192,7 +192,6 @@ class App
         $this->twig->addGlobal('flash', null);
         session_start();
         $this->twig->addGlobal('session', $_SESSION);
-        $this->strictPaths = true;
         $this->basePath = $basePath;
     }
 
