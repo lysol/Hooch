@@ -5,6 +5,7 @@
     "keywords": ["web","framework","twig"],
     "homepage": "http://github.com/lysol/hooch",
     "license": "MIT",
+    "version": "0.1.0",
     "authors": [
         {
             "name": "Derek Arnold",
