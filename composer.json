@@ -1,0 +1,24 @@
+{
+    "name": "hooch/hooch",
+    "type": "library",
+    "description": "A minimalist web framework for PHP 5",
+    "keywords": ["web","framework","twig"],
+    "homepage": "http://github.com/lysol/hooch",
+    "license": "MIT",
+    "authors" [
+        {
+            "name": "Derek Arnold",
+            "email": "zzzzbest@gmail.com",
+            "homepage": "http://derekarnold.net"
+        }
+    ],
+    "require": {
+        "php": ">=5.2.0",
+        "twig/twig": "*"
+    },
+    "autoload": {
+        "psr-0": {
+            "Hooch": "src"
+        }
+    }
+}
