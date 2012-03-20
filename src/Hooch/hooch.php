@@ -192,6 +192,7 @@ class App
         $this->twig->addGlobal('flash', null);
         session_start();
         $this->twig->addGlobal('session', $_SESSION);
+        $this->twig->addGlobal('server', $_SERVER);
         $this->basePath = $basePath;
     }
 
