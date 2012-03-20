@@ -363,7 +363,7 @@ class App
                 $pattern = $route->pattern;
                 foreach($args as $key => $val) {
                     if (strstr($pattern, ':' . $key) === false)
-                        throw new \Exception("No pattern argument named $name.");
+                        throw new \Exception("No pattern argument named $key.");
                     $pattern = str_replace(':' . $key, $val, $pattern);
                 }
                 if (strstr($pattern, ':') === ':')
