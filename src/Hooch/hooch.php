@@ -36,6 +36,24 @@ class Preprocessor
 }
 
 
+class FlashDirector // Haha!
+{
+    public function render($htmlFormat=null)
+    {
+        $payload = '';
+        if (isset($_SESSION['flash']) && is_array($_SESSION['flash']))
+            foreach($_SESSION['flash'] as $flash)
+                $payload .= $flash->render($htmlFormat);
+        unset($_SESSION['flash']);
+        return $payload;
+    }
+
+    public function __invoke()
+    {
+        return count($_SESSION['flash']) > 0;
+    }
+}
+
 class Flash
 {
     public $message;
@@ -128,6 +146,7 @@ class Post extends Route
     {
         parent::__construct($app, 'POST', $pattern, $callback, $name);
     }
+
 }
 
 
@@ -189,7 +208,7 @@ class App
         // stick pre-stripslash'd data in there
         $this->twig->addGlobal('form', $this->getPost());
         $this->twig->addGlobal('app', $this);
-        $this->twig->addGlobal('flash', null);
+        $this->twig->addGlobal('flash', new FlashDirector());
         session_start();
         $this->twig->addGlobal('session', $_SESSION);
         $this->twig->addGlobal('server', $_SERVER);
@@ -199,7 +218,9 @@ class App
     public function flash($message, $class='info')
     {
         $flash = new Flash($class, $message);
-        $this->addGlobal('flash', $flash);
+        if (!isset($_SESSION['flash']))
+            $_SESSION['flash'] = array();
+        $_SESSION['flash'][] = $flash;
     }
 
     public function render($template_name, $vars=array())
