@@ -4,6 +4,14 @@ namespace Hooch;
 
 require 'Twig/Autoloader.php';
 
+function append_traceback(&$message) {
+
+    ob_start();
+    debug_print_backtrace();
+    $message .= "<br />\n" . nl2br(ob_get_contents()) ;    
+    ob_end_clean();
+}
+
 class Preprocessor
 {
     public function __construct()
@@ -189,8 +197,11 @@ class App
     public $twig;
     public $error_page = null;
     public $error_args = array();
+    public $debug = false;
     private $_flash;
+    private $_routeGlobals;
 
+    public $trap = true;
 
     public function __construct($basePath='/', $twig=null, $loader=null)
     {
@@ -217,6 +228,8 @@ class App
 
     public function flash($message, $class='info')
     {
+        if ($class == 'error')
+            append_traceback(&$message);
         $flash = new Flash($class, $message);
         if (!isset($_SESSION['flash']))
             $_SESSION['flash'] = array();
@@ -316,18 +329,36 @@ class App
 
     private function wrapCallback($callable)
     {
+        if (!$this->trap)
+            return $callable;
         $app = $this;
-        return function($args) use ($callable, $app) {
+        $routeGlobals = $this->_routeGlobals;
+        return function($args) use ($callable, $app, $routeGlobals) {
+            foreach($routeGlobals as $k => $v)
+                $app->twig->addGlobal($k, $v);
             try {
                 $result = $callable($args);
                 return $result;
             } catch (\Exception $err) {
                 if ($app->error_page == null)
                     throw $err;
+                $message = $err->getMessage();
+                if ($app->debug)
+                    append_traceback(&$message);
                 $app->flash($err->getMessage(), 'error');
                 return $app->render($app->error_page, $app->error_args);
             }
         };
+    }
+
+    public function setRouteGlobals($inArray)
+    {
+        $this->_routeGlobals = $inArray;
+    }
+
+    public function clearRouteGlobals()
+    {
+        $this->_routeGlobals = array();
     }
 
     public function get($pattern, $callback, $name=null)
