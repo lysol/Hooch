@@ -445,5 +445,3 @@ class App
         return $out;
     }
 }
-
-?>
