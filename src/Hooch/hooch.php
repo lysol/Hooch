@@ -2,8 +2,6 @@
 
 namespace Hooch;
 
-require 'Twig/Autoloader.php';
-
 function append_traceback(&$message) {
 
     ob_start();
