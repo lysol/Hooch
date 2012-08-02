@@ -229,7 +229,7 @@ class App
     public function flash($message, $class='info')
     {
         if ($class == 'error')
-            append_traceback(&$message);
+            append_traceback($message);
         $flash = new Flash($class, $message);
         if (!isset($_SESSION['flash']))
             $_SESSION['flash'] = array();
@@ -344,7 +344,7 @@ class App
                     throw $err;
                 $message = $err->getMessage();
                 if ($app->debug)
-                    append_traceback(&$message);
+                    append_traceback($message);
                 $app->flash($err->getMessage(), 'error');
                 return $app->render($app->error_page, $app->error_args);
             }
