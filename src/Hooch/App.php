@@ -1,189 +1,5 @@
 <?php
-
 namespace Hooch;
-
-require 'Twig/Autoloader.php';
-
-function append_traceback(&$message) {
-
-    ob_start();
-    debug_print_backtrace();
-    $message .= "<br />\n" . nl2br(ob_get_contents()) ;    
-    ob_end_clean();
-}
-
-class Preprocessor
-{
-    public function __construct()
-    {
-    }
-
-    public function fail($app, $path)
-    {
-
-    }
-
-    public function success($app, $path)
-    {
-
-    }
-
-    public function process($app, $path)
-    {
-        if (!($this->test($app, $path))) {
-            $this->fail($app, $path);
-        } else {
-            $this->success($app, $path);
-        }
-    }
-
-    public function test($app, $path)
-    {
-
-    }
-}
-
-
-class FlashDirector // Haha!
-{
-    public function render($htmlFormat=null)
-    {
-        $payload = '';
-        if (isset($_SESSION['flash']) && is_array($_SESSION['flash']))
-            foreach($_SESSION['flash'] as $flash)
-                $payload .= $flash->render($htmlFormat);
-        unset($_SESSION['flash']);
-        return $payload;
-    }
-
-    public function __invoke()
-    {
-        return count($_SESSION['flash']) > 0;
-    }
-}
-
-class Flash
-{
-    public $message;
-    public $type;
-
-    public function __construct($type, $message)
-    {
-        $this->type = $type;
-        $this->message = $message;
-    }
-
-    public function render($htmlFormat=null)
-    {
-        if ($htmlFormat == null)
-            $htmlFormat = "<div class=\"flash flash-$this->type\">%s</div>";
-        return sprintf($htmlFormat, $this->message);
-    }
-}
-
-
-class Route
-{
-    public $routeType;
-    public $pattern;
-    public $callback;
-    public $name;
-    public $app;
-
-    public function __construct($app, $routeType, $pattern, $callback, $name=null)
-    {
-        $this->routeType = $routeType;
-        $this->pattern = $pattern;
-        $this->callback = $callback;
-        $this->name = $name;
-        $this->app = $app;
-    }
-
-    private function buildRoutePattern($pattern)
-    {
-        $pattern = preg_quote($pattern, '/');
-        $pattern = preg_replace('/\\\:([a-zA-Z0-9_]+)/', '(?P<$1>[^\/]+)', $pattern);
-        // only match full paths if this is set.
-        //if (isset($this->app->strictPaths) && $this->app->strictPaths)
-        //{
-            // If the last char is a slash, make it optional.
-            if (substr($pattern, -1, 1) == '/')
-                $pattern = sprintf("^%s$", $pattern . '?');
-            else    
-                $pattern = sprintf("^%s$", $pattern);
-        //}
-        return "/" . $pattern . "/";
-    }
-
-    public function dispatch($url)
-    {
-        if ($_SERVER['REQUEST_METHOD'] != $this->routeType)
-            return false;
-        $targetPattern = $this->buildRoutePattern($this->pattern);
-
-        if (preg_match($targetPattern, $url, $matches))
-        {
-            $argnames = array_filter(array_keys($matches), 'is_string');
-            $args = array();
-            foreach ($argnames as $arg)
-            {
-                $args[$arg] = $matches[$arg];
-            }
-            $callback = $this->callback;
-            $result = $callback($args);
-            if (is_string($result))
-                print $result;
-            return true;
-        }
-        return false;
-    }
-}
-
-
-class Get extends Route
-{
-    public function __construct($app, $pattern, $callback, $name=null)
-    {
-        parent::__construct($app, 'GET' ,$pattern, $callback, $name);
-    }
-}
-
-class Post extends Route
-{
-    public function __construct($app, $pattern, $callback, $name=null)
-    {
-        parent::__construct($app, 'POST', $pattern, $callback, $name);
-    }
-
-}
-
-
-class SubApp
-{
-    public $app;
-    public $prefix;
-
-    public function __construct($basePath, $basePrefix, $app)
-    {
-        $app->setBasePath($basePath . $basePrefix);
-        $this->app = $app;
-        $this->prefix = $basePrefix;
-        $this->basePath = $basePath;
-    }
-
-    public function dispatch($url)
-    {
-        if (substr($url, -1) == '/')
-            $url = substr($url, 0, strlen($url) - 1);
-        if (preg_match('/^' . preg_quote($this->prefix, '/') . '/', $url, $matches)) {
-            $url = substr($url, 0, strlen($this->basePrefix));
-            $this->app->serve($url);
-             return true;
-        } else {
-            return false;
-        }
-    }
-}
 
 class App
 {
@@ -207,7 +23,7 @@ class App
     {
         \Twig_Autoloader::register();
         if ($loader == null)
-            $loader = new \Twig_Loader_Filesystem('templates');
+            $loader = new \Twig_Loader_Filesystem(__DIR__);
         if ($twig == null)
             $this->twig = new \Twig_Environment(
                 $loader, 
@@ -228,8 +44,6 @@ class App
 
     public function flash($message, $class='info')
     {
-        if ($class == 'error')
-            append_traceback(&$message);
         $flash = new Flash($class, $message);
         if (!isset($_SESSION['flash']))
             $_SESSION['flash'] = array();
@@ -343,8 +157,6 @@ class App
                 if ($app->error_page == null)
                     throw $err;
                 $message = $err->getMessage();
-                if ($app->debug)
-                    append_traceback(&$message);
                 $app->flash($err->getMessage(), 'error');
                 return $app->render($app->error_page, $app->error_args);
             }
@@ -410,7 +222,7 @@ class App
 
     public function urlFor($name, $args=array()) {
         if (!is_array($args))
-            throw new Exception('Arguments must be an array.');
+            throw new \Exception('Arguments must be an array.');
         foreach($this->routes as $route) {
             if ($route->name === $name) {
                 $pattern = $route->pattern;
