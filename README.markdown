@@ -12,8 +12,9 @@ templates.
 
 Usage:
 
-    require_once 'hooch.php';
-    use \Hooch;
+    // Use the Composer autoloader.
+    require('vendor/autoload.php');
+
     // Instantiate the App class. Provide the base relative URL. 
     // For example, if it's http://127.0.0.1/~test/, use '/~test'
     $app = new \Hooch\App('/~test');
