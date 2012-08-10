@@ -38,8 +38,7 @@ Usage:
     // PHP 5.3.0 and above.
 
     $app->get('/', function($args) use ($app) {
-        return $app->render('home.html');
-        $template = $twig->loadTemplate('home.html', array('someVal' => true));
+        return $app->render('home.html', array('someVal' => true));
     });
     // Look, even PHP can have moustaches!
 
